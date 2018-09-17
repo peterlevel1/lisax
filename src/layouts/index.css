@@ -1,0 +1,10 @@
+.layoutContainer {
+  font-family: Georgia, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.content {
+  flex: 1;
+}

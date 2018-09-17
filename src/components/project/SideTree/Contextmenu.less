@@ -1,0 +1,30 @@
+.contextmenu {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  min-width: 100px;
+  border-radius: 4px;
+  background-color: #fff;
+  border: 1px solid #999;
+  box-shadow: 2px 2px 10px #666;
+  list-style: none;
+  display: none;
+
+  &.active {
+    display: block;
+  }
+
+  li {
+    padding: 2px;
+    padding-left: 5px;
+
+    &:hover {
+      background-color: #2A8EF4;
+      color: #fff;
+      cursor: pointer;
+    }
+  }
+}

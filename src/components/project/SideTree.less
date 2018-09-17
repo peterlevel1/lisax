@@ -1,0 +1,27 @@
+.container {
+  position: relative;
+  width: 200px;
+  height: 100%;
+  background-color: #eee;
+  display: flex;
+  flex-direction: column;
+
+  :global {
+    .ant-tree-title {
+      user-select: none;
+    }
+  }
+}
+
+.content {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+// .inputingTitle {
+//   height: 60px;
+// }
+
+// .treeNodeTitle {
+// }
