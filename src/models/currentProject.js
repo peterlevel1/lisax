@@ -1,14 +1,14 @@
 import services from '../services';
-import { reducerSave, addKey } from '../utils/common';
+import { reducerSave, addKey, findTreeNode } from '../utils/common';
 import { NODE_TYPE_ROOT, NODE_TYPE_FOLDER, NODE_TYPE_HTTPDOC } from '../utils/constants';
 
-const { getProjectById, updateProject } = services;
+const { getProjectById, updateProject, getNodeChildren } = services;
 
 function getTree(res) {
   const { id, name, desc, content } = res.data;
 
   return {
-    id: id + '',
+    id,
     title: name,
     desc,
     type: NODE_TYPE_ROOT,
@@ -22,8 +22,10 @@ function getTree(res) {
   };
 }
 
+const NAMESPACE = 'currentProject';
+
 export default {
-  namespace: 'currentProject',
+  namespace: NAMESPACE,
 
   state: {
     data: null,
@@ -31,7 +33,8 @@ export default {
   },
 
   effects: {
-    *init({ payload }, { call, put }) {
+    *init({ payload }, { call, put, select }) {
+      // payload is { id }
       const res = yield call(getProjectById, null, payload);
       if (res.success) {
         yield put({
@@ -41,8 +44,40 @@ export default {
             tree: getTree(res)
           }
         });
+
+        yield put({
+          type: 'getNodeChildren',
+          payload
+        })
       }
     },
+
+    *getNodeChildren({ payload }, { call, put }) {
+      const res = yield call(getNodeChildren, null, payload);
+      if (res.success) {
+        yield put({
+          type: 'updateNodeChildren',
+          payload: {
+            id: payload.id,
+            children: res.data
+          }
+        });
+      }
+    },
+
+    *addNode({ payload }, { call, put }) {
+
+    },
+
+    updateNode({ payload }, { call, put }) {
+
+    },
+
+    *delNode({ payload }, { call, put }) {
+
+    },
+
+    extrangeNodes({ payload }, { call, put }) {},
 
     *save({ payload }, { call, put }) {
       const { pathObj, params } = payload;
@@ -53,5 +88,21 @@ export default {
     }
   },
 
-  reducers: { update: reducerSave }
+  reducers: {
+    update: reducerSave,
+
+    // only update tree or folder children
+    updateNodeChildren(state, { id, children }) {
+      const { tree } = state;
+
+      if (id === tree.id) {
+        tree.children = children;
+      } else {
+        const node = findTreeNode(tree, [ id ]);
+        node.children = children;
+      }
+
+      return { ...state, tree: { ...tree } };
+    }
+  }
 };

@@ -41,6 +41,37 @@ export function findIndex(arr, cb) {
   }
 }
 
+/**
+ * find target node by an array
+ * @param {Object} node the data node which should have children prop
+ * @param {Array} arr the id list
+ */
+export function findTreeNode(node, arr = []) {
+  let i = -1, length = arr.length, parent = node, children, k, kk;
+
+  while (++i < length) {
+    if (!parent) {
+      return;
+    }
+
+    children = parent.children;
+    if (!children || !Array.isArray(children) || !children.length) {
+      return;
+    }
+
+    for (k = 0, kk = children.length; k < kk; k++) {
+      if (children[k] && children[k].id === arr[i]) {
+        parent = children[k];
+        break;
+      }
+    }
+  }
+
+  if (i === length) {
+    return parent;
+  }
+}
+
 export function walkTree(tree, cb) {
   if (!tree) {
     return;
