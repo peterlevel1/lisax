@@ -151,11 +151,11 @@ export default {
       const tree = state.tree;
       const node = payload;
 
-      tree.selectedNode = node;
-
-      if (node && node.type === NODE_TYPE_FOLDER && !tree.expandedKeys.includes(node.key)) {
+      if (node && node.type === NODE_TYPE_FOLDER) {
         tree.expandedKeys = [ node.key ];
       }
+
+      tree.selectedNode = node;
 
       return { ...state, tree: { ...tree } };
     },
