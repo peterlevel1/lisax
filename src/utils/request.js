@@ -76,8 +76,10 @@ function handleResponseText(url, text) {
   //   return;
   // }
 
-  if (ret.success !== true) {
-    message.error(ret.message || `${ERROR_TEXT}`);
+  // 成功或者失败，只要有message, 就显示出来
+  if (ret.message) {
+    const method = ret.success ? 'success' : 'error';
+    message[method](ret.message);
   }
 
   return ret;

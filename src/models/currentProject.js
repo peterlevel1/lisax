@@ -35,6 +35,8 @@ export default {
   effects: {
     *init({ payload }, { call, put, select }) {
       // payload is { id }
+      payload.id = +payload.id;
+
       const res = yield call(getProjectById, null, payload);
       if (res.success) {
         yield put({

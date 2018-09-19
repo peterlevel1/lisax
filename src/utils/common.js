@@ -142,6 +142,7 @@ export function getSimpleServices(obj) {
   return Object.keys(obj).reduce((memo, key) => {
     let method = 'GET';
     let url;
+    let defaultBody;
 
     // string or array
     const value = obj[key];
@@ -150,26 +151,35 @@ export function getSimpleServices(obj) {
         const arr = value.split(/\s+/);
         method = arr[0];
         url = arr[1];
+        if (arr[2]) {
+          try {
+            defaultBody = JSON.parse(arr[2]);
+          } catch (e) {}
+        }
       } else {
         url = value;
       }
     } else {
       method = value[0];
       url = value[1];
+      defaultBody = value[2];
     }
 
-    memo[key] = getService(method, url);
+    memo[key] = getService(method, url, defaultBody);
 
     return memo;
   }, {});
 }
 
-function getService(method, url) {
+function getService(method, url, defaultBody) {
   const fn = pathToRegexp.compile(url);
 
   return function(body, pathObj) {
     const realUrl = fn(pathObj);
-    return request(realUrl, { body, method });
+    return request(realUrl, {
+      body: defaultBody ? { ...defaultBody, ...(body || {}) } : body,
+      method
+    });
   }
 }
 

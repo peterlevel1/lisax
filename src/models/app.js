@@ -3,11 +3,21 @@ import router from 'umi/router';
 import services from '../services';
 import { reducerSave, addKey, convertPath, matchRoute } from '../utils/common';
 
-const { getUser } = services;
+const { getUser, login } = services;
 const onUpdateLocation = matchRoute([
   { pathname: '/project', actionType: 'project/init' },
   { parser: convertPath('/project/:id'), actionType: 'currentProject/init' },
 ]);
+
+function initApp(location, dispatch) {
+  const { pathname } = location;
+
+  if (['/login', '/register'].includes(pathname)) {
+    return;
+  }
+
+  dispatch({ type: 'init' });
+}
 
 export default {
   namespace: 'app',
@@ -18,7 +28,7 @@ export default {
 
   subscriptions: {
     setup({ dispatch, history }) {
-      dispatch({ type: 'init' });
+      initApp(history.location, dispatch);
 
       history.listen(location => {
         onUpdateLocation(location, dispatch);
@@ -33,6 +43,7 @@ export default {
 
     *getUser(action, { call, put }) {
       const res = yield call(getUser);
+
       if (res.success) {
         yield put({
           type: 'update',
@@ -43,6 +54,14 @@ export default {
 
       if (res.needsLogin) {
         router.push('/login');
+      }
+    },
+
+    *login({ payload }, { call, put }) {
+      const res = yield call(login, payload);
+
+      if (res.success) {
+        router.push('/');
       }
     }
   },

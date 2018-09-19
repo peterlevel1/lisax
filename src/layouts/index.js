@@ -7,7 +7,7 @@ export default function BasicLayout(props) {
   return (
     <div className={styles.layoutContainer}>
       {
-        !/^\/project\/\d+$/.test(location.pathname) &&
+        !/^\/(project\/\d+|login)$/.test(location.pathname) &&
         <Header location={location} />
       }
       <section className={styles.content}>
