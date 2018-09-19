@@ -1,6 +1,7 @@
+import pathToRegexp from 'path-to-regexp';
+import router from 'umi/router';
 import services from '../services';
 import { reducerSave, addKey, convertPath, matchRoute } from '../utils/common';
-import pathToRegexp from 'path-to-regexp';
 
 const { getUser } = services;
 const onUpdateLocation = matchRoute([
@@ -37,6 +38,11 @@ export default {
           type: 'update',
           payload: { user: res.data }
         });
+        return;
+      }
+
+      if (res.needsLogin) {
+        router.push('/login');
       }
     }
   },

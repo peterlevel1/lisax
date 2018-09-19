@@ -31,7 +31,7 @@ export const RESPONSE_CONTENT_TYPES = [
   'IMAGE'
 ];
 
-export const NODE_TYPE_ROOT = 1;
-export const NODE_TYPE_FOLDER = 2;
-export const NODE_TYPE_HTTPDOC = 3;
+export const NODE_TYPE_ROOT = 0;
+export const NODE_TYPE_FOLDER = 1;
+export const NODE_TYPE_HTTPDOC = 2;
 

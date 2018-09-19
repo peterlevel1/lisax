@@ -276,7 +276,7 @@ export default class SideTree extends Component {
 
   renderTree(data) {
     const arr = data || this.props.tree.children;
-    if (!arr || arr.length) {
+    if (!arr || !arr.length) {
       return null;
     }
 

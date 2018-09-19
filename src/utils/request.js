@@ -70,10 +70,11 @@ function parseText(text) {
 function handleResponseText(url, text) {
   const ret = parseText(text) || {};
 
-  if (ret.redirectUrl) {
-    location.href = ret.redirectUrl;
-    return;
-  }
+  // TODO: 设定特定的 service 处理这个问题
+  // if (ret.redirectUrl) {
+  //   location.href = ret.redirectUrl;
+  //   return;
+  // }
 
   if (ret.success !== true) {
     message.error(ret.message || `${ERROR_TEXT}`);

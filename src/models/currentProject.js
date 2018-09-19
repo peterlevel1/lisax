@@ -59,7 +59,10 @@ export default {
           type: 'updateNodeChildren',
           payload: {
             id: payload.id,
-            children: res.data
+            children: res.data.map(item => {
+              item.title = item.name;
+              return item;
+            })
           }
         });
       }
@@ -92,7 +95,8 @@ export default {
     update: reducerSave,
 
     // only update tree or folder children
-    updateNodeChildren(state, { id, children }) {
+    updateNodeChildren(state, { payload }) {
+      const { id, children } = payload;
       const { tree } = state;
 
       if (id === tree.id) {
