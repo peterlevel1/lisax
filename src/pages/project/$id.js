@@ -210,6 +210,13 @@ class Project extends Component {
     this.onChangeTree();
   }
 
+  onAction = (action) => {
+    this.props.dispatch({
+      ...action,
+      type: `currentProject/${action.type}`
+    });
+  }
+
   render() {
     const { store, location } = this.props;
     const { tree, data } = store;
@@ -225,6 +232,7 @@ class Project extends Component {
           onSelectNode={this.onSelectNode}
           onChangeTree={this.onChangeTree}
           afterDelNode={afterDelNode}
+          onAction={this.onAction}
         />
         <Content
           query={query}

@@ -1,6 +1,7 @@
 import { Component } from 'react';
 import styles from './SideTree.less';
 import PropTypes from 'prop-types';
+import invariant from 'invariant';
 import { Input, Button, Icon, Select, Tree } from 'antd';
 import { document } from 'global';
 import { walkTree, findIndex } from '../../utils/common';
@@ -48,6 +49,8 @@ export default class SideTree extends Component {
         y: 0,
       },
     };
+
+    this.lazyLoadFolders = [];
   }
 
   componentDidMount() {
@@ -58,12 +61,16 @@ export default class SideTree extends Component {
     document.body.removeEventListener('click', this.hideContextmenuIfPossible);
   }
 
-  getNodeById(id) {
-    return walkTree(this.props.tree, (node) => {
-      if (node.id === id) {
+  getNodeByKey(key) {
+    const node = walkTree(this.props.tree.children, (node) => {
+      if (node.key === key) {
         return node;
       }
     });
+
+    invariant(node, `[sideTree.getNode] key: ${key}, node should be found`);
+
+    return node;
   }
 
   hideContextmenuIfPossible = (e) => {
@@ -131,26 +138,21 @@ export default class SideTree extends Component {
   }
 
   onSelect = (selectedKeys) => {
-    const tree = this.props.tree;
-    // tree.selectedKeys = selectedKeys;
-    // 只选1个httpDoc节点
-    if (selectedKeys.length) {
-      const id = selectedKeys[selectedKeys.length - 1];
-      const node = this.getNodeById(id);
-
-      switch (node.type) {
-        case NODE_TYPE_HTTPDOC:
-          // TODO: 编辑状态的标识
-          node.editing = true;
-          tree.selectedNode = node;
-          this.props.onSelectNode();
-        break;
-        case NODE_TYPE_FOLDER:
-          tree.selectedNode = null;
-          this.props.onChangeTree();
-        break;
-      }
+    if (!selectedKeys.length) {
+      this.props.onAction({
+        type: 'onSelectNode',
+        payload: { node: null }
+      });
+      return;
     }
+
+    const key = selectedKeys[selectedKeys.length - 1];
+    const node = this.getNodeByKey(key);
+
+    this.props.onAction({
+      type: 'onSelectNode',
+      payload: { node }
+    });
   }
 
   onRightClick = (e) => {
@@ -285,13 +287,13 @@ export default class SideTree extends Component {
 
       if (node.children && node.children.length) {
         return (
-          <TreeNode key={node.id} title={title}>
+          <TreeNode key={node.key} title={title}>
             {this.renderTree(node.children)}
           </TreeNode>
         );
       }
 
-      return <TreeNode key={node.id} title={title} />;
+      return <TreeNode key={node.key} title={title} />;
     });
   }
 
@@ -311,8 +313,9 @@ export default class SideTree extends Component {
     }
 
     return (
-      <span className={styles.treeNodeTitle} data-node-id={node.id}>
+      <span className={styles.treeNodeTitle} data-node-type={node.type} data-node-id={node.id}>
         <span>
+          {node.loading && <Icon type={'loading'} />}
           <Icon type={NODE_ICON_TYPES[node.type]} />
           {node.title}
         </span>
@@ -323,6 +326,7 @@ export default class SideTree extends Component {
   render() {
     const contextmenu = this.state.contextmenu;
     const tree = this.props.tree;
+    console.log('tree.expandedKeys', tree.expandedKeys);
 
     return (
       <div className={styles.container}>

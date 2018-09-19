@@ -2,17 +2,17 @@ import services from '../services';
 import { reducerSave, addKey, findTreeNode } from '../utils/common';
 import { NODE_TYPE_ROOT, NODE_TYPE_FOLDER, NODE_TYPE_HTTPDOC } from '../utils/constants';
 
-const { getProjectById, updateProject, getNodeChildren } = services;
-
 function getTree(res) {
-  const { id, name, desc, content } = res.data;
+  const { id, name, desc } = res.data;
 
   return {
+    // 2个 表
     id,
     title: name,
-    desc,
+    key: `${NODE_TYPE_ROOT}_${id}`,
     type: NODE_TYPE_ROOT,
-    children: content ? JSON.parse(content) : [],
+    desc,
+    children: [],
     selectedNode: null,
     // antd tree props
     expandedKeys: [],
@@ -29,15 +29,15 @@ export default {
 
   state: {
     data: null,
-    tree: null,
+    tree: getTree({
+      data: { id: '',  name: '', desc: '' }
+    }),
   },
 
   effects: {
     *init({ payload }, { call, put, select }) {
       // payload is { id }
-      payload.id = +payload.id;
-
-      const res = yield call(getProjectById, null, payload);
+      const res = yield call(services.getProject, null, payload);
       if (res.success) {
         yield put({
           type: 'update',
@@ -48,26 +48,29 @@ export default {
         });
 
         yield put({
-          type: 'getNodeChildren',
+          type: 'getProjectFolders',
           payload
         })
       }
     },
 
-    *getNodeChildren({ payload }, { call, put }) {
-      const res = yield call(getNodeChildren, null, payload);
+    *getProjectFolders({ payload }, { call, put }) {
+      const res = yield call(services.getProjectFolders, null, payload);
+
       if (res.success) {
         yield put({
-          type: 'updateNodeChildren',
-          payload: {
-            id: payload.id,
-            children: res.data.map(item => {
-              item.title = item.name;
-              return item;
-            })
-          }
+          type: 'updateProjectFolders',
+          payload: res.data.map(node => {
+            node.type = NODE_TYPE_FOLDER;
+            node.key = `${NODE_TYPE_FOLDER}_${node.id}`;
+            return node;
+          })
         });
       }
+    },
+
+    *getNode({ payload }, { call, put }) {
+
     },
 
     *addNode({ payload }, { call, put }) {
@@ -82,9 +85,45 @@ export default {
 
     },
 
+    *onSelectNode({ payload }, { call, put }) {
+      const { node } = payload;
+
+      if (!node || node.loaded) {
+        yield put({
+          type: 'updateTreeSelectedNode',
+          payload: node
+        });
+
+        return;
+      }
+
+      if (node.type === NODE_TYPE_FOLDER) {
+        node.loading = true;
+        yield put({ type: 'freshTree' });
+
+        const res = yield call(services.getProjectFolderChildren, null, { id: node.id });
+        if (res.success) {
+          node.children = res.data.map(one => {
+            one.loaded = true;
+            one.type = NODE_TYPE_HTTPDOC;
+            one.key = `${NODE_TYPE_HTTPDOC}_${node.id}`;
+            return one;
+          });
+        }
+
+        node.loading = false;
+        node.loaded = true;
+
+        yield put({
+          type: 'updateTreeSelectedNode',
+          payload: node
+        });
+      }
+    },
+
     extrangeNodes({ payload }, { call, put }) {},
 
-    *save({ payload }, { call, put }) {
+    *updateProject({ payload }, { call, put }) {
       const { pathObj, params } = payload;
       const res = yield call(updateProject, params, pathObj);
       if (res.success) {
@@ -96,19 +135,29 @@ export default {
   reducers: {
     update: reducerSave,
 
-    // only update tree or folder children
-    updateNodeChildren(state, { payload }) {
-      const { id, children } = payload;
+    freshTree(state) {
+      return { ...state, tree: { ...state.tree } };
+    },
+
+    updateProjectFolders(state, { payload }) {
       const { tree } = state;
 
-      if (id === tree.id) {
-        tree.children = children;
-      } else {
-        const node = findTreeNode(tree, [ id ]);
-        node.children = children;
+      tree.children = payload;
+
+      return { ...state, tree: { ...tree } };
+    },
+
+    updateTreeSelectedNode(state, { payload }) {
+      const tree = state.tree;
+      const node = payload;
+
+      tree.selectedNode = node;
+
+      if (node && node.type === NODE_TYPE_FOLDER && !tree.expandedKeys.includes(node.key)) {
+        tree.expandedKeys = [ node.key ];
       }
 
       return { ...state, tree: { ...tree } };
-    }
+    },
   }
 };
