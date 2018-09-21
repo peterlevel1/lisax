@@ -197,7 +197,7 @@ class Project extends Component {
     const tree = this.props.store.tree;
     const { selectedNode, selectedRecords } = tree;
 
-    console.log('selectedNode', selectedNode);
+    // console.log('selectedNode', selectedNode);
     const found = selectedRecords.find(one => one.id === selectedNode.id);
     if (!found) {
       selectedRecords.push(selectedNode);

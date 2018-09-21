@@ -2,6 +2,7 @@ import { Component } from 'react';
 import styles from './SideTree.less';
 import PropTypes from 'prop-types';
 import invariant from 'invariant';
+import classnames from 'classnames';
 import { Input, Button, Icon, Select, Tree } from 'antd';
 import { document } from 'global';
 import { walkTree, findIndex } from '../../utils/common';
@@ -13,14 +14,14 @@ const TreeNode = Tree.TreeNode;
 const CONTEXTMENU_ID = 'siderTree_contextmenu';
 const CONTEXTMENU_MENUS_MAP = {
   [NODE_TYPE_FOLDER]: [
-    { text: '新增文档', type: 'addHttpDoc' },
-    { text: '编辑', type: 'editFolder' },
+    { text: '新增文档', type: 'addNode' },
+    { text: '编辑', type: 'updateFolder' },
     { text: '删除', type: 'delFolder' },
   ],
 
   [NODE_TYPE_HTTPDOC]: [
-    { text: '编辑', type: 'editHttpDoc' },
-    { text: '删除', type: 'delHttpDoc' },
+    { text: '编辑', type: 'updateNode' },
+    { text: '删除', type: 'delNode' },
   ]
 };
 const NODE_ICON_TYPES = {
@@ -62,7 +63,7 @@ export default class SideTree extends Component {
   }
 
   getNodeByKey(key) {
-    const node = walkTree(this.props.tree.children, (node) => {
+    const node = walkTree(this.props.tree, (node) => {
       if (node.key === key) {
         return node;
       }
@@ -159,7 +160,7 @@ export default class SideTree extends Component {
     const { event, node } = e;
     event.persist();
 
-    const selectedNode = this.getNodeById(node.props.eventKey);
+    const selectedNode = this.getNodeByKey(node.props.eventKey);
 
     this.setState({
       contextmenu: {
@@ -185,45 +186,79 @@ export default class SideTree extends Component {
   }
 
   handleTitleInput(node, e, done) {
-    node.title = e.target.value;
-    if (done) {
-      node.inputingTitle = false;
+    node._title = e.target.value;
 
-      if (!node.title) {
-        this.handleTreeAction({
-          actionType: node.type === NODE_TYPE_FOLDER ? 'delFolder' : 'delHttpDoc',
-          node
-        });
-        return;
-      }
-    }
-
-    this.props.onChangeTree();
-  }
-
-  onClickMenu = (menuItem) => () => {
-    this.handleTreeAction({ actionType: menuItem.type, node: this.state.contextmenu.node });
-  }
-
-  handleTreeAction({ actionType, node }) {
-    const tree = this.props.tree;
-    const contextmenu = this.state.contextmenu;
-
-    if (contextmenu.active) {
-      this.setState({
-        contextmenu: { ...contextmenu, active: false }
-      });
-    }
-
-    if (actionType === 'addHttpDoc') {
-      this.onAdd({ from: 'folder', id: node.id });
+    if (!done) {
+      this.props.onAction({ type: 'freshTree' });
       return;
     }
 
-    switch (actionType) {
+    const onAction = this.props.onAction;
+    const tree = this.props.tree;
+    const parent = node.type === NODE_TYPE_FOLDER ?
+      tree :
+      tree.children.find(one => one.id === node.parentId);
+
+    node._inputing = false;
+
+    if (!node._title) {
+      onAction({
+        type: node.type === NODE_TYPE_FOLDER ? 'delFolder' : 'delNode',
+        payload: { node, parent }
+      });
+      return;
+    }
+
+    if (node._creating) {
+      onAction({
+        type: node.type === NODE_TYPE_FOLDER ? 'addFolder' : 'addNode',
+        payload: { node, parent }
+      });
+      return;
+    }
+
+    onAction({
+      type: node.type === NODE_TYPE_FOLDER ? 'updateFolder' : 'updateNode',
+      payload: { node, parent, params: { id: node.id, title: node.title } }
+    });
+  }
+
+  onClickMenu = (menuItem) => () => {
+    const contextmenu = this.state.contextmenu;
+    const node = contextmenu.node;
+
+    if (contextmenu.active) {
+      this.setState({
+        contextmenu: { ...contextmenu, active: false, node: null }
+      });
+    }
+
+    this.onIntent({ type: menuItem.type, node });
+  }
+
+  // init action
+  onIntent({ type, node }) {
+    const tree = this.props.tree;
+    const onAction = this.props.onAction;
+
+    switch (type) {
+      case 'addNode':
+        onAction({
+          type: 'addNode',
+          payload: { parent: node }
+        });
+      break;
+
+      case 'addFolder':
+        onAction({
+          type: 'addFolder',
+          payload: { node }
+        });
+      break;
+
       case 'editFolder':
       case 'editHttpDoc':
-        node.inputingTitle = true;
+        node._inputing = true;
       break;
       case 'delFolder':
       case 'delHttpDoc': {
@@ -298,13 +333,12 @@ export default class SideTree extends Component {
   }
 
   renderTitle(node) {
-    if (node.inputingTitle) {
+    if (node._inputing) {
       return (
         <Input
           className={styles.inputingTitle}
           autoFocus
-          style={{ width: 80 }}
-          value={node.title}
+          value={node._title}
           onChange={this.onChangeTitleInput(node)}
           onBlur={this.onBlurTitleInput(node)}
           onPressEnter={this.onPressEnterTitleInput(node)}
@@ -312,10 +346,12 @@ export default class SideTree extends Component {
       );
     }
 
+    const cls = classnames({ [styles.creating]: node._creating });
+
     return (
       <span className={styles.treeNodeTitle} data-node-type={node.type} data-node-id={node.id}>
-        <span>
-          {node.loading && <Icon type={'loading'} />}
+        <span className={cls}>
+          {node._loading && <Icon type={'loading'} />}
           <Icon type={NODE_ICON_TYPES[node.type]} />
           {node.title}
         </span>
@@ -326,12 +362,11 @@ export default class SideTree extends Component {
   render() {
     const contextmenu = this.state.contextmenu;
     const tree = this.props.tree;
-    console.log('tree.expandedKeys', tree.expandedKeys);
 
     return (
       <div className={styles.container}>
         <header className={styles.header}>
-          <Button onClick={() => this.onAdd({ from: 'root', id: tree.id })}>
+          <Button onClick={() => this.onIntent({ type: 'addFolder' })}>
             <Icon type='plus' />
           </Button>
         </header>

@@ -6,38 +6,42 @@ import qs from 'querystring';
 const ERROR_TEXT = '系统异常，请稍后再试';
 
 export default function request(url, options = {}) {
-  return fetch(url, normalizeOptions(options))
+  const { requestUrl, requestOptions } = normalizeOptions(url, options);
+
+  return fetch(requestUrl, requestOptions)
     .then(checkStatus)
     .then((res) => res.text())
     .then((text) => handleResponseText(url, text))
     .catch(err => handleResponseText(url, getErrorText(`处理出错: ${err.message}`)));
 }
 
-function normalizeOptions(options) {
+function normalizeOptions(url, options) {
+  let requestUrl = url, requestOptions = { ...options };
+
   // omit: 默认值，忽略cookie的发送
   // same-origin: 表示cookie只能同域发送，不能跨域发送
   // include: cookie既可以同域发送，也可以跨域发送
-  options.credentials = options.credentials || 'same-origin';
+  requestOptions.credentials = requestOptions.credentials || 'same-origin';
+  requestOptions.method = requestOptions.method || 'GET';
 
-  if (!options.headers) {
-    if (options.method === 'GET') {
-      options.headers = {
+  if (!requestOptions.headers) {
+    if (requestOptions.method === 'GET') {
+      requestOptions.headers = {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
       };
-
-      if (options.body) {
-        options.url = options.url + '?' + qs.stringify(options.body);
-        delete options.body;
+      if (requestOptions.body) {
+        requestUrl = url + '?' + qs.stringify(requestOptions.body);
+        delete requestOptions.body;
       }
-    } else if (['POST', 'PUT', 'DELETE'].includes(options.method)) {
-      options.headers = {
+    } else if (['POST', 'PUT', 'DELETE'].includes(requestOptions.method)) {
+      requestOptions.headers = {
         'Content-Type': 'application/json; charset=UTF-8'
       };
-      options.body = JSON.stringify(delEmptyParams(options.body || {}));
+      requestOptions.body = JSON.stringify(delEmptyParams(requestOptions.body || {}));
     }
   }
 
-  return options;
+  return { requestUrl, requestOptions };
 }
 
 function checkStatus(response) {
