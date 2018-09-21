@@ -4,13 +4,14 @@
 ### main purposes
 -----
 
-1. create frontend mock service automatically.
-2. generate ajax files for fontend, with specified validator and request/response rules.
-3. generate response rules for backend.
-4. test whether a request/response is correct.
-5. privacy & access control.
-6. generate React antd codes for search/table page.
-7. generate backend codes(TODO JAVA, nodejs).
-8. generate sql files(TODO).
-9. integrate OAuth2.0(TODO).
-
+1. mock: create frontend mock service automatically.
+2. ajax rules: generate ajax files for fontend, with specified validator and request/response rules.
+3. backend rules: generate request/response rules for backend.
+4. test: test whether a request/response is correct.
+5. acl: privacy & access control.
+6. frontend codes: generate React antd codes for search/table page.
+7. export: export data to excel/json／pdf files.
+8. backend codes: generate backend codes(TODO: JAVA Spring Boot).
+9. generate sql files(TODO: mysql).
+10. integrate OAuth2.0(TODO: github, weibo, qq, etc.).
+11. version control(TODO: use git/svn as the source control).
