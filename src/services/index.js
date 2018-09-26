@@ -8,18 +8,8 @@ const services = getSimpleServices({
   ab: 'GET /res/a/b/index',
 
   ...getRestRequestObj('project'),
-
-  addProjectFolder: 'POST /api/docFolder',
-  getProjectFolders: 'GET /api/docFolder',
-  getProjectFolder: 'GET /api/docFolder/:id',
-  updateProjectFolder: 'PUT /api/docFolder/:id',
-  delProjectFolder: 'DELETE /api/docFolder/:id',
-
-  addProjectNode: 'POST /api/docNode',
-  getProjectNodes: 'GET /api/docNode',
-  getProjectNode: 'GET /api/docNode/:id',
-  updateProjectNode: 'PUT /api/docNode/:id',
-  delProjectNode: 'DELETE /api/docNode/:id',
+  ...getRestRequestObj('projectFolder', 'docFolder'),
+  ...getRestRequestObj('projectNode', 'docNode'),
 });
 
 export default services;

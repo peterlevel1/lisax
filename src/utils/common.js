@@ -216,14 +216,15 @@ export function matchRoute(routes) {
   }
 }
 
-export function getRestRequestObj(name, prefix = API_PREFIX) {
-  const key = name[0].toUpperCase() + name.slice(1);
+export function getRestRequestObj(key, name, prefix = API_PREFIX) {
+  const restKey = key[0].toUpperCase() + key.slice(1);
+  const restName = name || key;
 
   return {
-    [`add${key}`]: `POST /${prefix}/${name}`,
-    [`get${key}s`]: `GET /${prefix}/${name}`,
-    [`get${key}`]: `GET /${prefix}/${name}/:id`,
-    [`update${key}`]: `PUT /${prefix}/${name}/:id`,
-    [`del${key}`]: `DELETE /${prefix}/${name}/:id`,
+    [`add${restKey}`]: `POST /${prefix}/${restName}`,
+    [`get${restKey}s`]: `GET /${prefix}/${restName}`,
+    [`get${restKey}`]: `GET /${prefix}/${restName}/:id`,
+    [`update${restKey}`]: `PUT /${prefix}/${restName}/:id`,
+    [`del${restKey}`]: `DELETE /${prefix}/${restName}/:id`,
   };
 }

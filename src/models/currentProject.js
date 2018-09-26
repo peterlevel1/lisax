@@ -21,23 +21,28 @@ function getTree(res) {
   };
 }
 
-function createNode(parent) {
+function createNode(parent, node = {}) {
   const type = parent.type === NODE_TYPE_ROOT ? NODE_TYPE_FOLDER : NODE_TYPE_HTTPDOC;
-  const id = `${parent.id}-${parent.children.length}`;
+  const id = node.id ? node.id + '' : `${parent.id}-${parent.children.length}`;
   const key = `${type}_${id}`;
   const ret = {
     // ---------------------
+    // id，创建之前，由前端创造id, 创建之后，更新为返回数据的id
     id,
+    // parentId 与后台保持同步
     parentId: parent.id,
-    title: '',
-    desc: '',
+    title: node.title || '',
+    desc: node.desc || '',
     // ---------------------
     type,
     key,
+
+    // model操作
     _loaded: false,
     _loading: false,
-    _creating: true,
-    _inputing: true,
+
+    // 组件操作
+    _inputingTitle: true,
     _title: '',
     // ---------------------
   };
@@ -50,13 +55,16 @@ function createNode(parent) {
     case NODE_TYPE_HTTPDOC:
       ret.data = {
         id: id.replace(/-/g, '_'),
-        requestMethod: 'POST',
-        requestUrl: '',
-        desc: '',
-        requestHeader: [],
-        requestParams: [],
-        responseHeader: [],
-        responseParams: [],
+
+        request: {
+          method: 'GET',
+          url: '',
+          params: []
+        },
+
+        response: {
+          params: []
+        }
       };
     break;
   }
@@ -99,17 +107,16 @@ export default {
 
         yield put({
           type: 'getFolders',
-          payload: { parentId: payload.id }
+          payload: { parentId: res.data.id }
         })
       }
     },
 
     *getFolders({ payload }, { call, put }) {
       const res = yield call(services.getProjectFolders, payload);
-
       if (res.success) {
         yield put({
-          type: 'updateFolders',
+          type: 'updateLoadedFolders',
           payload: res.data
         });
       }
@@ -117,17 +124,16 @@ export default {
 
     // ---------------------------------
 
-    *getFolder({ payload }, { call, put }) {
-
-    },
-
     *addFolder({ payload }, { call, put }) {
       const { node, parent } = payload;
 
       if (!node) {
-        yield put({ type: 'addModule' });
+        yield put({ type: 'addModule', payload });
         return;
       }
+
+      node._loading = true;
+      yield put({ type: 'freshTree' });
 
       const res = yield call(services.addProjectFolder, {
         title: node._title,
@@ -135,8 +141,9 @@ export default {
       });
 
       if (res.success) {
-        Object.assign(node, res.data);
-        node._creating = false;
+        node.id = res.data.id + '';
+        node._loading = false;
+        node._loaded = true;
         node.title = node._title;
 
         node.children.forEach(one => {
@@ -148,47 +155,91 @@ export default {
     },
 
     *updateFolder({ payload }, { call, put }) {
-      const { params } = payload;
-      const res = yield call(services.updateFolder, params);
+      const { node, parent } = payload;
 
-      if (res.success) {
-
+      if (node._inputingTitle) {
+        yield put({ type: 'updateModule', payload });
+        return;
       }
 
-      console.log('updateFolder', payload.node);
+      const { _title, id, desc } = node;
+      const res = yield call(services.updateProjectFolder, { title: _title, desc }, { id });
+      if (res.success) {
+        node.title = node._title;
+        yield put({ type: 'updateModule', payload });
+      }
     },
 
     *delFolder({ payload }, { call, put }) {
-      const { node } = payload;
+      const { node, parent } = payload;
 
-      if (node._creating) {
+      if (!node._loaded) {
         yield put({ type: 'delModule', payload });
         return;
+      }
+
+      const { id } = node;
+      const res = yield call(services.delFolder, null, { id });
+      if (res.success) {
+        yield put({ type: 'delModule', payload });
       }
     },
 
     // ---------------------------------
 
-    *getNode({ payload }, { call, put }) {
-
-    },
-
     *addNode({ payload }, { call, put }) {
-      const { parent, node } = payload;
+      const { node, parent } = payload;
 
       if (!node) {
-        yield put({ type: 'addHttpDoc', payload: { parent } });
+        yield put({ type: 'addHttpDoc', payload });
+        return;
+      }
+
+      node._loading = true;
+      yield put({ type: 'freshTree' });
+
+      const res = yield call(services.addProjectNode, {
+        title: node._title,
+        parentId: node.parentId
+      });
+
+      if (res.success) {
+        node.id = res.data.id + '';
+        node._loading = false;
+        node._loaded = true;
+        node.title = node._title;
+        node.data.id = node.id.replace(/-/g, '_'),
+
+        yield put({ type: 'freshTree' });
       }
     },
 
     *updateNode({ payload }, { call, put }) {
+      const { node, parent, src } = payload;
 
+      if (node._inputingTitle) {
+        yield put({ type: 'updateHttpDoc', payload });
+        return;
+      }
+
+      const { _title, id, desc, data } = node;
+      const params = { title: _title, desc };
+      if (data) {
+        params.data = JSON.stringify(data);
+      }
+
+      const res = yield call(services.updateProjectNode, params, { id });
+      if (res.success) {
+        node.title = node._title;
+        yield put({ type: 'updateHttpDoc', payload });
+      }
     },
 
     *delNode({ payload }, { call, put }) {
-      const { parent, node } = payload;
-
-      if (node._creating) {
+      const { node, parent } = payload;
+      const { id } = node;
+      const res = yield call(services.delProjectNode, null, { id });
+      if (res.success) {
         yield put({ type: 'delHttpDoc', payload });
       }
     },
@@ -200,7 +251,7 @@ export default {
 
       if (!node || node._loaded) {
         yield put({
-          type: 'updateTreeSelectedNode',
+          type: 'updateSelectedNode',
           payload: node
         });
 
@@ -213,33 +264,26 @@ export default {
 
         const res = yield call(services.getProjectNodes, { parentId: node.id });
         if (res.success) {
+          node._loading = false;
+          node._loaded = true;
+
           node.children = res.data.map(one => {
-            one.type = NODE_TYPE_HTTPDOC;
-            one.key = `${NODE_TYPE_HTTPDOC}_${node.id}`;
-            one._loaded = true;
-            return one;
+            return {
+              ...createNode(node, one),
+              _inputingTitle: false,
+              _loaded: true,
+            };
           });
+
+          console.log('node.children', node.children);
         }
 
-        node._loading = false;
-        node._loaded = true;
-
         yield put({
-          type: 'updateTreeSelectedNode',
+          type: 'updateSelectedNode',
           payload: node
         });
       }
     },
-
-    *extrangeNodes({ payload }, { call, put }) {},
-
-    *updateProject({ payload }, { call, put }) {
-      const { pathObj, params } = payload;
-      const res = yield call(updateProject, params, pathObj);
-      if (res.success) {
-        console.log('save success');
-      }
-    }
   },
 
   reducers: {
@@ -253,20 +297,22 @@ export default {
       return { ...state, tree: { ...state.tree } };
     },
 
-    updateFolders(state, { payload }) {
+    updateLoadedFolders(state, { payload }) {
       const { tree } = state;
 
-      tree.children = payload.map(node => {
-        node.type = NODE_TYPE_FOLDER;
-        node.key = `${NODE_TYPE_FOLDER}_${node.id}`;
-        node.children = [];
-        return node;
+      tree.children = payload.map(one => {
+        return {
+          ...createNode(tree),
+          ...one,
+          key: `${NODE_TYPE_FOLDER}_${one.id}`,
+          _inputingTitle: false,
+        };
       });
 
       return { ...state, tree: { ...tree } };
     },
 
-    updateTreeSelectedNode(state, { payload }) {
+    updateSelectedNode(state, { payload }) {
       const tree = state.tree;
       const node = payload;
 
@@ -279,13 +325,20 @@ export default {
       return { ...state, tree: { ...tree } };
     },
 
+    // ---------------------------------
+
     addModule(state, { payload }) {
       const { tree } = state;
+      const { parent } = payload;
 
-      const node = createNode(tree);
-      tree.children.push(node);
+      const node = createNode(parent);
+      parent.children.push(node);
 
       return { ...state, tree: { ...tree } };
+    },
+
+    updateModule(state, { payload }) {
+      return { ...state, tree: { ...state.tree } };
     },
 
     delModule(state, { payload }) {
@@ -295,8 +348,16 @@ export default {
       const index = tree.children.findIndex(one => one.id === node.id);
       tree.children.splice(index, 1);
 
+      if (tree.expandedKeys.includes(node.key)) {
+        const index = tree.expandedKeys.findIndex(one => one.key === node.key);
+        tree.expandedKeys.splice(index, 1);
+        tree.expandedKeys = [ ...tree.expandedKeys ];
+      }
+
       return { ...state, tree: { ...tree } };
     },
+
+    // ---------------------------------
 
     addHttpDoc(state, { payload }) {
       const { tree } = state;
@@ -313,6 +374,10 @@ export default {
       return { ...state, tree: { ...tree } };
     },
 
+    updateHttpDoc(state, { payload }) {
+      return { ...state, tree: { ...state.tree } };
+    },
+
     delHttpDoc(state, { payload }) {
       const { tree } = state;
       const { node, parent } = payload;
@@ -320,7 +385,7 @@ export default {
       const index = parent.children.findIndex(one => one.id === node.id);
       parent.children.splice(index, 1);
 
-      if (tree.expandedKeys.includes(parent.key)) {
+      if (!parent.children.length && tree.expandedKeys.includes(parent.key)) {
         const index = tree.expandedKeys.findIndex(one => one.key === parent.key);
         tree.expandedKeys.splice(index, 1);
         tree.expandedKeys = [ ...tree.expandedKeys ];

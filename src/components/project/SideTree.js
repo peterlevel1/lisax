@@ -110,32 +110,12 @@ export default class SideTree extends Component {
     }
   }
 
-  // 顶部+ 加文件夹
-  // 文件夹+ 加文档
-  onAdd = (info) => {
-    const tree = this.props.tree;
-    const parent = this.getNodeById(info.id);
-    const node = this.props.createNode(info, parent);
-
-    parent.children.push(node);
-
-    if (parent.type === NODE_TYPE_FOLDER) {
-      if (!tree.expandedKeys.includes(parent.id)) {
-        tree.expandedKeys = [ ...tree.expandedKeys, parent.id ];
-      }
-
-      tree.autoExpandParent = false;
-    }
-
-    this.props.onChangeTree();
-  }
-
   onExpand = (expandedKeys) => {
     const tree = this.props.tree;
     tree.expandedKeys = expandedKeys;
     tree.autoExpandParent = false;
 
-    this.props.onChangeTree();
+    this.props.onAction({ type: 'freshTree' });
   }
 
   onSelect = (selectedKeys) => {
@@ -147,13 +127,18 @@ export default class SideTree extends Component {
       return;
     }
 
-    const key = selectedKeys[selectedKeys.length - 1];
-    const node = this.getNodeByKey(key);
+    if (selectedKeys.length === 1) {
+      const key = selectedKeys[selectedKeys.length - 1];
+      const node = this.getNodeByKey(key);
 
-    this.props.onAction({
-      type: 'onSelectNode',
-      payload: { node }
-    });
+      this.props.onAction({
+        type: 'onSelectNode',
+        payload: { node }
+      });
+      return;
+    }
+
+    throw new Error('selectedKeys.length > 1');
   }
 
   onRightClick = (e) => {
@@ -199,7 +184,7 @@ export default class SideTree extends Component {
       tree :
       tree.children.find(one => one.id === node.parentId);
 
-    node._inputing = false;
+    node._inputingTitle = false;
 
     if (!node._title) {
       onAction({
@@ -209,7 +194,7 @@ export default class SideTree extends Component {
       return;
     }
 
-    if (node._creating) {
+    if (!node._loaded) {
       onAction({
         type: node.type === NODE_TYPE_FOLDER ? 'addFolder' : 'addNode',
         payload: { node, parent }
@@ -219,7 +204,7 @@ export default class SideTree extends Component {
 
     onAction({
       type: node.type === NODE_TYPE_FOLDER ? 'updateFolder' : 'updateNode',
-      payload: { node, parent, params: { id: node.id, title: node.title } }
+      payload: { node, parent }
     });
   }
 
@@ -233,82 +218,52 @@ export default class SideTree extends Component {
       });
     }
 
-    this.onIntent({ type: menuItem.type, node });
+    this.onIntent(menuItem.type, node);
   }
 
-  // init action
-  onIntent({ type, node }) {
+  onIntent = (type, node) => {
     const tree = this.props.tree;
     const onAction = this.props.onAction;
+    let parentNode, subNode;
 
     switch (type) {
-      case 'addNode':
-        onAction({
-          type: 'addNode',
-          payload: { parent: node }
-        });
-      break;
-
       case 'addFolder':
-        onAction({
-          type: 'addFolder',
-          payload: { node }
-        });
+        parentNode = tree;
       break;
 
-      case 'editFolder':
-      case 'editHttpDoc':
-        node._inputing = true;
+      case 'updateFolder':
+        parentNode = tree;
+        subNode = node;
+        subNode._inputingTitle = true;
+        subNode._title = subNode.title;
       break;
+
       case 'delFolder':
-      case 'delHttpDoc': {
-        const parentId = node.id.replace(/-\d+$/, '');
-        const parent = this.getNodeById(parentId);
-        const index = findIndex(parent.children, (one) => one.id === node.id);
-        parent.children.splice(index, 1);
+        parentNode = tree;
+        subNode = node;
+      break;
 
-        if (actionType === 'delHttpDoc') {
-          // 1. selectedRecords
-          const recordIndex = tree.selectedRecords.findIndex(item => item.id === node.id);
-          if (recordIndex > -1) {
-            tree.selectedRecords.splice(recordIndex, 1);
-          }
+      case 'addNode':
+        parentNode = node;
+      break;
 
-          // 2. selectedNode
-          if (tree.selectedNode) {
-            if (tree.selectedNode.id === node.id) {
-              tree.selectedNode = null;
-            }
-          }
-        }
+      case 'updateNode':
+        parentNode = tree.children.find(one => one.id === node.parentId);
+        subNode = node;
+        subNode._inputingTitle = true;
+        subNode._title = subNode.title;
+      break;
 
-        if (actionType === 'delFolder') {
-          // 1. selectedRecords
-          node.children.forEach(node => {
-            const index = tree.selectedRecords.findIndex(one => one === node);
-            if (index > -1) {
-              tree.selectedRecords.splice(index, 1);
-            }
-
-            // 2. selectedNode
-            if (tree.selectedNode === node) {
-              tree.selectedNode = null;
-            }
-          });
-
-          // 3. expandedKeys
-          if (tree.expandedKeys.includes(node.id)) {
-            const index = findIndex(tree.expandedKeys, (key) => key === node.id);
-            tree.expandedKeys.splice(index, 1);
-          }
-        }
-
-        this.props.afterDelNode(parent);
-      }
+      case 'delNode':
+        parentNode = tree.children.find(one => one.id === node.parentId);
+        subNode = node;
       break;
     }
 
-    this.props.onChangeTree();
+    onAction({
+      type,
+      payload: { parent: parentNode, node: subNode }
+    });
   }
 
   renderTree(data) {
@@ -333,7 +288,7 @@ export default class SideTree extends Component {
   }
 
   renderTitle(node) {
-    if (node._inputing) {
+    if (node._inputingTitle) {
       return (
         <Input
           className={styles.inputingTitle}
@@ -366,7 +321,7 @@ export default class SideTree extends Component {
     return (
       <div className={styles.container}>
         <header className={styles.header}>
-          <Button onClick={() => this.onIntent({ type: 'addFolder' })}>
+          <Button onClick={() => this.onIntent('addFolder')}>
             <Icon type='plus' />
           </Button>
         </header>
