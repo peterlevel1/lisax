@@ -1,6 +1,7 @@
 import request from './request';
 import generate from 'nanoid/generate';
 import pathToRegexp from 'path-to-regexp';
+import { API_PREFIX } from './constants';
 
 export function isIndentType(type) {
   return /^object|array\[object\]$/.test(type);
@@ -129,7 +130,7 @@ export function reducerSave(state, { payload = {} }) {
 export function delEmptyParams(options = {}) {
   for (let p in options) {
     if (Object.hasOwnProperty.call(options, p)) {
-      if (typeof options[p] !== 'number' && !options[p]) {
+      if (!options[p] && typeof options[p] !== 'number' && typeof options[p] !== 'boolean') {
         delete options[p];
       }
     }
@@ -213,4 +214,16 @@ export function matchRoute(routes) {
       }
     }
   }
+}
+
+export function getRestRequestObj(name, prefix = API_PREFIX) {
+  const key = name[0].toUpperCase() + name.slice(1);
+
+  return {
+    [`add${key}`]: `POST /${prefix}/${name}`,
+    [`get${key}s`]: `GET /${prefix}/${name}`,
+    [`get${key}`]: `GET /${prefix}/${name}/:id`,
+    [`update${key}`]: `PUT /${prefix}/${name}/:id`,
+    [`del${key}`]: `DELETE /${prefix}/${name}/:id`,
+  };
 }

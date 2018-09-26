@@ -21,9 +21,11 @@ class Login extends Component {
         return;
       }
 
+      const params = { ...values, rememberme: 0 };
+
       this.props.dispatch({
         type: 'app/login',
-        payload: values
+        payload: params
       });
 
     });

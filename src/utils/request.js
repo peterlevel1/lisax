@@ -1,18 +1,20 @@
 import { message } from 'antd';
 import fetch from 'dva/fetch';
+import statusCodes from './status-codes';
 import { delEmptyParams } from './common';
 import qs from 'querystring';
 
+let csrfToken = '';
 const ERROR_TEXT = '系统异常，请稍后再试';
 
 export default function request(url, options = {}) {
   const { requestUrl, requestOptions } = normalizeOptions(url, options);
 
   return fetch(requestUrl, requestOptions)
-    .then(checkStatus)
-    .then((res) => res.text())
-    .then((text) => handleResponseText(url, text))
-    .catch(err => handleResponseText(url, getErrorText(`处理出错: ${err.message}`)));
+    .then(onResponse)
+    .catch(err => {
+      message.error(`${requestOptions.method} ${url}: ${err.message}`);
+    });
 }
 
 function normalizeOptions(url, options) {
@@ -35,7 +37,8 @@ function normalizeOptions(url, options) {
       }
     } else if (['POST', 'PUT', 'DELETE'].includes(requestOptions.method)) {
       requestOptions.headers = {
-        'Content-Type': 'application/json; charset=UTF-8'
+        'Content-Type': 'application/json; charset=UTF-8',
+        // 'X-CSRF-Token': csrfToken
       };
       requestOptions.body = JSON.stringify(delEmptyParams(requestOptions.body || {}));
     }
@@ -44,16 +47,31 @@ function normalizeOptions(url, options) {
   return { requestUrl, requestOptions };
 }
 
-function checkStatus(response) {
+async function onResponse(response) {
+  let ret;
+
   if (response.status >= 200 && response.status < 300) {
-    return response;
+    if ([ 201, 204 ].includes(response.status)) {
+      ret = { success: true };
+    }
+
+    if (!ret) {
+      ret = await response.text();
+      ret = parseText(ret) || {};
+    }
   }
 
-  return { text: getErrorText };
-}
+  if (ret && ret.message) {
+    const method = ret.success ? 'success' : 'error';
+    message[method](ret.message);
+    return;
+  }
 
-function getErrorText(text) {
-  return `{"success": false, "message": "${text || ERROR_TEXT}"}`;
+  if (response.status >= 400) {
+    message.error(statusCodes[response.status] || ERROR_TEXT);
+  }
+
+  return ret;
 }
 
 function parseText(text) {
@@ -71,20 +89,6 @@ function parseText(text) {
   return ret;
 }
 
-function handleResponseText(url, text) {
-  const ret = parseText(text) || {};
-
-  // TODO: 设定特定的 service 处理这个问题
-  // if (ret.redirectUrl) {
-  //   location.href = ret.redirectUrl;
-  //   return;
-  // }
-
-  // 成功或者失败，只要有message, 就显示出来
-  if (ret.message) {
-    const method = ret.success ? 'success' : 'error';
-    message[method](ret.message);
-  }
-
-  return ret;
+export function setCsrfToken(token) {
+  csrfToken = token;
 }

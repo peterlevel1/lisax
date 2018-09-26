@@ -1,14 +1,13 @@
-import { getSimpleServices } from '../utils/common';
+import { getSimpleServices, getRestRequestObj } from '../utils/common';
 
 const services = getSimpleServices({
-  getUser: 'GET /res/u/info',
-  login: 'POST /res/u/login',
+  getUser: 'GET /res/user/info',
+  login: 'POST /res/user/login',
+  logout: 'GET /res/user/logout',
 
-  getProjects: 'GET /api/project',
-  addProject: 'POST /api/project',
-  getProject: 'GET /api/project/:id',
-  updateProject: 'PUT /api/project/:id',
-  delProject: 'DELETE /api/project/:id',
+  ab: 'GET /res/a/b/index',
+
+  ...getRestRequestObj('project'),
 
   addProjectFolder: 'POST /api/docFolder',
   getProjectFolders: 'GET /api/docFolder',
