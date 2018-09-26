@@ -232,6 +232,9 @@ export default class SideTree extends Component {
       break;
 
       case 'updateFolder':
+        if (!node._loaded) {
+          return;
+        }
         parentNode = tree;
         subNode = node;
         subNode._inputingTitle = true;
@@ -248,6 +251,9 @@ export default class SideTree extends Component {
       break;
 
       case 'updateNode':
+        if (!node._loaded) {
+          return;
+        }
         parentNode = tree.children.find(one => one.id === node.parentId);
         subNode = node;
         subNode._inputingTitle = true;

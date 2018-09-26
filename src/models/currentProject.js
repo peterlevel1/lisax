@@ -157,6 +157,10 @@ export default {
     *updateFolder({ payload }, { call, put }) {
       const { node, parent } = payload;
 
+      if (!node._loaded) {
+        return;
+      }
+
       if (node._inputingTitle) {
         yield put({ type: 'updateModule', payload });
         return;
@@ -216,6 +220,10 @@ export default {
 
     *updateNode({ payload }, { call, put }) {
       const { node, parent, src } = payload;
+
+      if (!node._loaded) {
+        return;
+      }
 
       if (node._inputingTitle) {
         yield put({ type: 'updateHttpDoc', payload });
