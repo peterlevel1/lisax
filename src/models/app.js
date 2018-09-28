@@ -40,16 +40,10 @@ export default {
   effects: {
     *init(action, { put, call }) {
       yield put({ type: 'getUser' });
-      const res = yield call(services.ab);
-      if (res.success) {
-        console.log('res a.b', res);
-      }
     },
 
     *getUser(action, { call, put }) {
       const res = yield call(getUser);
-      console.log('getUser res', res);
-
       if (res.success) {
         yield put({
           type: 'update',
@@ -64,7 +58,6 @@ export default {
     },
 
     *login({ payload }, { call, put }) {
-      console.log('login payload', payload);
       const res = yield call(login, payload);
 
       if (res.success) {

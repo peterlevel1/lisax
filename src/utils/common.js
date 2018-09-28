@@ -7,11 +7,14 @@ export function isIndentType(type) {
   return /^object|array\[object\]$/.test(type);
 }
 
-const ALPHABETS = 'abcdefghijklmnopqrstuvwxyz0123456789';
-const ID_KEY_NUM = 6;
-export function getUniqueId() {
-  return generate(ALPHABETS, ID_KEY_NUM) + ('_' + Date.now());
-}
+export const getUniqueId = (function () {
+  const ALPHABETS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const ID_KEY_NUM = 10;
+
+  return function() {
+    return generate(ALPHABETS, ID_KEY_NUM);
+  }
+})();
 
 export function convertPath(path) {
   const tokens = [];

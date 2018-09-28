@@ -5,6 +5,7 @@ import { delEmptyParams } from './common';
 import qs from 'querystring';
 
 let csrfToken = '';
+let accessToken = '';
 const ERROR_TEXT = '系统异常，请稍后再试';
 
 export default function request(url, options = {}) {
@@ -38,36 +39,43 @@ function normalizeOptions(url, options) {
     } else if (['POST', 'PUT', 'DELETE'].includes(requestOptions.method)) {
       requestOptions.headers = {
         'Content-Type': 'application/json; charset=UTF-8',
-        // 'X-CSRF-Token': csrfToken
       };
+
+      if (csrfToken) {
+        requestOptions.headers['X-CSRF-Token'] = csrfToken;
+      }
+
       requestOptions.body = JSON.stringify(delEmptyParams(requestOptions.body || {}));
     }
+  }
+
+  if (accessToken) {
+    requestOptions.headers['X-Access-Token'] = accessToken;
   }
 
   return { requestUrl, requestOptions };
 }
 
 async function onResponse(response) {
-  let ret;
+  let ret = {};
 
   if (response.status >= 200 && response.status < 300) {
     if ([ 201, 204 ].includes(response.status)) {
       ret = { success: true };
     }
 
-    if (!ret) {
+    if (!ret.success) {
       ret = await response.text();
       ret = parseText(ret) || {};
     }
+
+    if (ret.message) {
+      const method = ret.success ? 'success' : 'error';
+      message[method](ret.message);
+    }
   }
 
-  if (ret && ret.message) {
-    const method = ret.success ? 'success' : 'error';
-    message[method](ret.message);
-    return;
-  }
-
-  if (response.status >= 400) {
+  if (!ret.message && response.status >= 400) {
     message.error(statusCodes[response.status] || ERROR_TEXT);
   }
 
@@ -91,4 +99,8 @@ function parseText(text) {
 
 export function setCsrfToken(token) {
   csrfToken = token;
+}
+
+export function setAccessToken(token) {
+  accessToken = token;
 }

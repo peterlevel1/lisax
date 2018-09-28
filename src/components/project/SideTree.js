@@ -31,8 +31,7 @@ const NODE_ICON_TYPES = {
 
 export default class SideTree extends Component {
   static propTypes = {
-    tree: PropTypes.object,
-    onChangeTree: PropTypes.func.isRequired,
+    tree: PropTypes.object.isRequired,
   }
 
   static defaultProps = {

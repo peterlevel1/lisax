@@ -37,11 +37,8 @@ function createNode(parent, node = {}) {
     type,
     key,
 
-    // model操作
     _loaded: false,
     _loading: false,
-
-    // 组件操作
     _inputingTitle: true,
     _title: '',
     // ---------------------
@@ -49,16 +46,16 @@ function createNode(parent, node = {}) {
 
   switch (ret.type) {
     case NODE_TYPE_FOLDER:
-      ret.children = [];
+      ret.children = node.children || [];
     break;
 
     case NODE_TYPE_HTTPDOC:
-      ret.data = {
-        id: id.replace(/-/g, '_'),
-
+      ret.data = node.data || {
         request: {
           method: 'GET',
           url: '',
+          // TODO: 保存时要把 desc 数据 拿出来放到 node 节点上
+          desc: node.desc || '',
           params: []
         },
 
@@ -212,7 +209,6 @@ export default {
         node._loading = false;
         node._loaded = true;
         node.title = node._title;
-        node.data.id = node.id.replace(/-/g, '_'),
 
         yield put({ type: 'freshTree' });
       }
@@ -276,14 +272,16 @@ export default {
           node._loaded = true;
 
           node.children = res.data.map(one => {
+            if (one.data) {
+              one.data = JSON.parse(one.data);
+            }
+
             return {
               ...createNode(node, one),
               _inputingTitle: false,
               _loaded: true,
             };
           });
-
-          console.log('node.children', node.children);
         }
 
         yield put({

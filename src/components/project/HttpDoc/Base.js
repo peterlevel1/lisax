@@ -7,13 +7,12 @@ export default function Base({ form, data, formItemLayout, formItemLayout2 }) {
 
   return (
     <header className={styles.base}>
-      <h3>基本信息</h3>
-      <Row>
+      <Row gutter={16}>
         <Col span={6}>
           <Form.Item {...formItemLayout} label='方法'>
             {
-              getFieldDecorator('requestMethod', {
-                initialValue: data.requestMethod,
+              getFieldDecorator('request-method', {
+                initialValue: data.request.method,
               })(
                 <Select style={{ width: '100%' }}>
                   {
@@ -26,26 +25,22 @@ export default function Base({ form, data, formItemLayout, formItemLayout2 }) {
             }
           </Form.Item>
         </Col>
-      </Row>
-      <Row>
-        <Col span={12}>
+        <Col span={6}>
           <Form.Item {...formItemLayout2} label='路径'>
             {
-              getFieldDecorator('requestUrl', {
-                initialValue: data.requestUrl,
+              getFieldDecorator('request-url', {
+                initialValue: data.request.url,
               })(
                 <Input />
               )
             }
           </Form.Item>
         </Col>
-      </Row>
-      <Row>
         <Col span={12}>
           <Form.Item {...formItemLayout2} label='简述'>
             {
-              getFieldDecorator('desc', {
-                initialValue: data.desc,
+              getFieldDecorator('request-desc', {
+                initialValue: data.request.desc,
               })(
                 <textarea className={styles.desc} />
               )
